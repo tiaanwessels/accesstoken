@@ -3,11 +3,9 @@
 session_start();
 
 // so sessions expire
-/*
 ini_set('session.gc_maxlifetime', 1800);
 ini_set('session.cookie_lifetime', 1800);
 session_regenerate_id(true);
-*/
 
 $db = new SQLite3('sentry.db');
 $db->exec('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, change INTEGER, descr TEXT)');
@@ -24,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 	$result = $stmt->execute();
 	if ($row = $result->fetchArray(SQLITE3_ASSOC))
 	{
-		if ($password == $row['password'] || password_verify($password, $row['password']))
+		if (password_verify($password, $row['password']))
 		{
 			$_SESSION['loggedin'] = true;
 			$_SESSION['username'] = $username;
@@ -47,6 +45,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 			echo "Invalid username or password (1).";
 			echo '<script> setTimeout(function() { window.location.href = "index.html"; }, 3000); </script>';
 		}
+	}
+	else if ($username == 'admin')
+	{
+		$stmt = $db->prepare('INSERT INTO users (username, password, change, descr) VALUES (:username, :password, :now, :descr)');
+		$stmt->bindValue(':username', 'admin', SQLITE3_TEXT);
+		$stmt->bindValue(':password', password_hash($password, PASSWORD_DEFAULT), SQLITE3_TEXT);
+		$stmt->bindValue(':now', time(), SQLITE3_INTEGER);
+		$stmt->bindValue(':descr', 'super user', SQLITE3_TEXT);
+		$stmt->execute();
+		header("Location: index.html");
 	}
 	else
 	{
